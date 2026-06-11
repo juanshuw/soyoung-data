@@ -170,6 +170,10 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
     <div class="card"><div class="row"><div><h3>城市每日 GMV（堆叠）</h3><div class="cap">Top8城市 + 其他</div></div><div class="spacer"></div>
       <div class="seg" id="ciGmvSeg"><span class="on" data-m="day">日</span><span data-m="week">周</span><span data-m="month">月</span></div></div>
       <div id="cCiStack" class="chart"></div></div>
+    <div class="card"><div class="row"><div><h3>单城市走势（接诊 + GMV）</h3><div class="cap">柱=接诊，线=GMV估算</div></div><div class="spacer"></div>
+      <select id="ciSel" style="min-width:160px"></select>
+      <div class="seg" id="ciTrendSeg"><span class="on" data-m="day">日</span><span data-m="week">周</span><span data-m="month">月</span></div></div>
+      <div id="cCiTrend" class="chart"></div></div>
     <div class="card"><h3>城市明细</h3><div class="tblwrap"><table id="tCi"></table></div></div>
   </div>
 
@@ -399,7 +403,7 @@ const CONFIG = {
   PROD_LOCAL: 'product.csv'
 };
 const PAL = ['#2c7be5','#e8743b','#00a884','#6c5ce7','#e84393','#feca57','#15aabf','#fa5252','#82c91e','#7950f2','#fd7e14','#20c997','#4263eb','#f06595','#94d82d','#a9e34b'];
-let D=null, charts={}, state={gmv:'day',recv:'day',asp:'day',prTrend:'day',ciGmv:'day',ciRecv:'day',shTrend:'day',prN:15,shN:20,shCity:'全部',prSel:null,shSel:null};
+let D=null, charts={}, state={gmv:'day',recv:'day',asp:'day',prTrend:'day',ciGmv:'day',ciRecv:'day',ciTrend:'day',shTrend:'day',prN:15,shN:20,shCity:'全部',prSel:null,ciSel:null,shSel:null};
 const $=id=>document.getElementById(id);
 const fmtM=v=>(v/1e6).toFixed(2)+'M', fmtW=v=>(v/1e4).toFixed(1)+'万', fmtK=v=>(v/1e3).toFixed(1)+'k';
 const yi=v=>v>=1e8?(v/1e8).toFixed(1)+'亿':v>=1e4?(v/1e4).toFixed(0)+'万':v;
@@ -601,6 +605,23 @@ function renderCiStackG(cid,field,mode,isMoney){
 }
 function renderCiStack(){ renderCiStackG('cCiStack','rev',state.ciGmv,true); }
 function renderCiRecvStack(){ renderCiStackG('cCiRecvStack','recv',state.ciRecv,false); }
+function renderCiTrend(){
+  const c=gc('cCiTrend'); const city=state.ciSel; const cd=D.city_daily[city]; const o=D.overview;
+  let x=o.recept_dates, rv=cd?cd.recv:[], re=cd?cd.rev:[];
+  if(state.ciTrend!=='day'){ const a1=periodAgg(o.recept_dates,rv,state.ciTrend), a2=periodAgg(o.recept_dates,re,state.ciTrend); x=a1.x; rv=a1.y; re=a2.y; }
+  c.setOption({
+    title:{text:city,left:'center',textStyle:{fontSize:13,color:'#56627a'}},
+    tooltip:{trigger:'axis'},legend:{data:['接诊','GMV估算'],top:0},
+    grid:{left:56,right:64,top:30,bottom:58},
+    xAxis:{type:'category',data:x,axisLabel:{rotate:45}},
+    yAxis:[{type:'value',name:'接诊',axisLabel:{formatter:yi}},{type:'value',name:'GMV',axisLabel:{formatter:yi}}],
+    dataZoom:[{type:'inside'},{type:'slider',height:14,bottom:16}],
+    series:[
+      {name:'接诊',type:'bar',data:rv,itemStyle:{color:'rgba(232,116,59,.5)'}},
+      {name:'GMV估算',type:'line',yAxisIndex:1,data:re,smooth:true,symbol:'none',lineStyle:{color:PAL[0],width:2.2}}
+    ]
+  }); c.resize();
+}
 function renderCiTable(){
   const ndays=D.overview.recept_dates.length;
   const rows=D.cities;
@@ -657,6 +678,8 @@ function buildSelectors(){
   // 门店下拉 + 城市筛选
   fillSel('shSel',D.shops.map(s=>[s.shop,s.shop]),''); state.shSel=D.shops[0]?.shop; $('shSel').value=state.shSel;
   $('shCityFilter').innerHTML='<option>全部</option>'+D.cities.map(c=>`<option>${c.city}</option>`).join('');
+  // 城市下拉(单城市走势)
+  $('ciSel').innerHTML=D.cities.map(c=>`<option>${c.city}</option>`).join(''); state.ciSel=D.cities[0]?.city; $('ciSel').value=state.ciSel;
 }
 function fillSel(id,pairs,filter){ const el=$(id); const f=(filter||'').trim();
   el.innerHTML=pairs.filter(p=>!f||String(p[1]).includes(f)).map(p=>`<option value="${p[0]}">${p[1]}</option>`).join(''); }
@@ -668,7 +691,7 @@ function showTab(t){ curTab=t;
   if(!D) return;
   if(t==='ov'){ renderGmv(); renderRecv(); renderAsp(); }
   if(t==='pr'){ renderPrBar(); renderPrTree(); renderPrTrend(); renderPrTable($('prTblSearch').value); }
-  if(t==='ci'){ renderCiBar(); renderCiRecvStack(); renderCiStack(); renderCiTable(); }
+  if(t==='ci'){ renderCiBar(); renderCiRecvStack(); renderCiStack(); renderCiTrend(); renderCiTable(); }
   if(t==='sh'){ renderShBar(); renderShTrend(); renderShTable($('shTblSearch').value); }
 }
 function renderFoot(src){
@@ -687,6 +710,7 @@ segBind('aspSeg','asp','m',renderAsp);
 segBind('prTrendSeg','prTrend','m',renderPrTrend);
 segBind('ciRecvSeg','ciRecv','m',renderCiRecvStack);
 segBind('ciGmvSeg','ciGmv','m',renderCiStack);
+segBind('ciTrendSeg','ciTrend','m',renderCiTrend);
 segBind('shTrendSeg','shTrend','m',renderShTrend);
 segBind('prTopSeg','prN','n',renderPrBar);
 segBind('shTopSeg','shN','n',renderShBar);
@@ -694,6 +718,7 @@ $('prSearch').oninput=e=>{ fillSel('prSel',D.products.map(p=>[p.id,p.name]),e.ta
 $('prSel').onchange=e=>{ state.prSel=+e.target.value; renderPrTrend(); };
 $('shSearch').oninput=e=>{ fillSel('shSel',D.shops.map(s=>[s.shop,s.shop]),e.target.value); if($('shSel').options.length){state.shSel=$('shSel').value;renderShTrend();} };
 $('shSel').onchange=e=>{ state.shSel=e.target.value; renderShTrend(); };
+$('ciSel').onchange=e=>{ state.ciSel=e.target.value; renderCiTrend(); };
 $('shCityFilter').onchange=e=>{ state.shCity=e.target.value; renderShBar(); };
 $('prTblSearch').oninput=e=>renderPrTable(e.target.value);
 $('shTblSearch').oninput=e=>renderShTable(e.target.value);
