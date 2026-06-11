@@ -106,7 +106,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
 <header>
   <div>
     <h1>新氧高频数据 BI 看板</h1>
-    <div class="sub">日GMV · 产品销售 · 分城市 · 分门店 ｜ 业务发生日口径 · 4×MA异常剔除 · 自然周(周一~周日)</div>
+    <div class="sub">日GMV · 产品销售 · 分城市 · 分门店 ｜ 业务发生日口径 · 日/周(周一~周日)/月(自然月) · 4×MA异常剔除</div>
   </div>
   <div class="spacer"></div>
   <div class="pill"><span id="srcdot" class="dot"></span><span id="srctxt">连接数据源…</span></div>
@@ -132,14 +132,16 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
   <div class="panel on" id="p-ov">
     <div class="card">
       <div class="row"><div><h3>全国每日 GMV</h3><div class="cap">产品销量×价格加总；浅线=原始，深线=清洗后(剔除>4×30日均值的异常日)，红点=异常日</div></div>
-        <div class="spacer"></div><div class="seg" id="gmvSeg"><span class="on" data-m="day">日</span><span data-m="week">周</span></div></div>
+        <div class="spacer"></div><div class="seg" id="gmvSeg"><span class="on" data-m="day">日</span><span data-m="week">周</span><span data-m="month">月</span></div></div>
       <div id="cGmv" class="chart"></div>
     </div>
     <div class="grid2">
       <div class="card"><div class="row"><div><h3>全国每日接诊数</h3><div class="cap">各门店当日接诊加总 + 7日均线</div></div>
-        <div class="spacer"></div><div class="seg" id="recvSeg"><span class="on" data-m="day">日</span><span data-m="week">周</span></div></div>
+        <div class="spacer"></div><div class="seg" id="recvSeg"><span class="on" data-m="day">日</span><span data-m="week">周</span><span data-m="month">月</span></div></div>
         <div id="cRecv" class="chart"></div></div>
-      <div class="card"><h3>每日客单价 ASP</h3><div class="cap">清洗后GMV ÷ 清洗后销量</div><div id="cAsp" class="chart"></div></div>
+      <div class="card"><div class="row"><div><h3>客单价 ASP</h3><div class="cap">清洗后GMV ÷ 清洗后销量</div></div><div class="spacer"></div>
+        <div class="seg" id="aspSeg"><span class="on" data-m="day">日</span><span data-m="week">周</span><span data-m="month">月</span></div></div>
+        <div id="cAsp" class="chart"></div></div>
     </div>
   </div>
 
@@ -151,8 +153,9 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
         <div id="cPrBar" class="chart tall"></div></div>
       <div class="card"><h3>产品 GMV 占比</h3><div class="cap">矩形树图，面积=GMV占比</div><div id="cPrTree" class="chart tall"></div></div>
     </div>
-    <div class="card"><div class="row"><div><h3>单产品每日走势</h3><div class="cap">柱=日销量，线=日GMV</div></div><div class="spacer"></div>
-      <input type="text" id="prSearch" placeholder="搜索产品…" style="width:180px"><select id="prSel" style="min-width:280px"></select></div>
+    <div class="card"><div class="row"><div><h3>单产品走势</h3><div class="cap">柱=销量，线=GMV</div></div><div class="spacer"></div>
+      <input type="text" id="prSearch" placeholder="搜索产品…" style="width:180px"><select id="prSel" style="min-width:280px"></select>
+      <div class="seg" id="prTrendSeg"><span class="on" data-m="day">日</span><span data-m="week">周</span><span data-m="month">月</span></div></div>
       <div id="cPrTrend" class="chart"></div></div>
     <div class="card"><div class="row"><h3>产品明细</h3><div class="spacer"></div><input type="text" id="prTblSearch" placeholder="筛选产品…" style="width:200px"></div>
       <div class="tblwrap"><table id="tPr"></table></div></div>
@@ -161,8 +164,11 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
   <!-- 城市 -->
   <div class="panel" id="p-ci">
     <div class="card"><h3>城市 GMV / 接诊 排名</h3><div class="cap">区间累计，双指标</div><div id="cCiBar" class="chart"></div></div>
+    <div class="card"><div class="row"><div><h3>城市每日接诊量（堆叠）</h3><div class="cap">Top8城市 + 其他</div></div><div class="spacer"></div>
+      <div class="seg" id="ciRecvSeg"><span class="on" data-m="day">日</span><span data-m="week">周</span><span data-m="month">月</span></div></div>
+      <div id="cCiRecvStack" class="chart"></div></div>
     <div class="card"><div class="row"><div><h3>城市每日 GMV（堆叠）</h3><div class="cap">Top8城市 + 其他</div></div><div class="spacer"></div>
-      <div class="seg" id="ciSeg"><span class="on" data-m="day">日</span><span data-m="week">周</span></div></div>
+      <div class="seg" id="ciGmvSeg"><span class="on" data-m="day">日</span><span data-m="week">周</span><span data-m="month">月</span></div></div>
       <div id="cCiStack" class="chart"></div></div>
     <div class="card"><h3>城市明细</h3><div class="tblwrap"><table id="tCi"></table></div></div>
   </div>
@@ -173,8 +179,9 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
       <select id="shCityFilter"></select>
       <div class="seg" id="shTopSeg"><span class="on" data-n="20">Top20</span><span data-n="40">Top40</span><span data-n="999">全部</span></div></div>
       <div id="cShBar" class="chart tall"></div></div>
-    <div class="card"><div class="row"><div><h3>单门店每日走势</h3><div class="cap">柱=日接诊，线=日GMV估算</div></div><div class="spacer"></div>
-      <input type="text" id="shSearch" placeholder="搜索门店…" style="width:180px"><select id="shSel" style="min-width:300px"></select></div>
+    <div class="card"><div class="row"><div><h3>单门店走势</h3><div class="cap">柱=接诊，线=GMV估算</div></div><div class="spacer"></div>
+      <input type="text" id="shSearch" placeholder="搜索门店…" style="width:180px"><select id="shSel" style="min-width:300px"></select>
+      <div class="seg" id="shTrendSeg"><span class="on" data-m="day">日</span><span data-m="week">周</span><span data-m="month">月</span></div></div>
       <div id="cShTrend" class="chart"></div></div>
     <div class="card"><div class="row"><h3>门店明细</h3><div class="spacer"></div><input type="text" id="shTblSearch" placeholder="筛选门店…" style="width:200px"></div>
       <div class="tblwrap"><table id="tSh"></table></div></div>
@@ -392,13 +399,19 @@ const CONFIG = {
   PROD_LOCAL: 'product.csv'
 };
 const PAL = ['#2c7be5','#e8743b','#00a884','#6c5ce7','#e84393','#feca57','#15aabf','#fa5252','#82c91e','#7950f2','#fd7e14','#20c997','#4263eb','#f06595','#94d82d','#a9e34b'];
-let D=null, charts={}, state={gmv:'day',recv:'day',ci:'day',prN:15,shN:20,shCity:'全部',prSel:null,shSel:null};
+let D=null, charts={}, state={gmv:'day',recv:'day',asp:'day',prTrend:'day',ciGmv:'day',ciRecv:'day',shTrend:'day',prN:15,shN:20,shCity:'全部',prSel:null,shSel:null};
 const $=id=>document.getElementById(id);
 const fmtM=v=>(v/1e6).toFixed(2)+'M', fmtW=v=>(v/1e4).toFixed(1)+'万', fmtK=v=>(v/1e3).toFixed(1)+'k';
 const yi=v=>v>=1e8?(v/1e8).toFixed(1)+'亿':v>=1e4?(v/1e4).toFixed(0)+'万':v;
 
 function gc(id){ if(!charts[id]) charts[id]=echarts.init($(id)); return charts[id]; }
-function weeklyAgg(dates,vals){ const m=new Map(); dates.forEach((d,i)=>{const w=SoYoungPipeline.weekStart(d); m.set(w,(m.get(w)||0)+(vals[i]||0));}); const ks=[...m.keys()].sort(); return {x:ks,y:ks.map(k=>m.get(k))}; }
+function monthStart(d){ return d.slice(0,7)+'-01'; } // 自然月
+function periodAgg(dates,vals,mode){ // 业务发生日为准；day=自然日, week=周一~周日, month=自然月
+  if(mode==='day'||!mode) return {x:dates.slice(),y:vals.slice()};
+  const key=mode==='week'?SoYoungPipeline.weekStart:monthStart;
+  const m=new Map(); dates.forEach((d,i)=>{const k=key(d); m.set(k,(m.get(k)||0)+(vals[i]||0));});
+  const ks=[...m.keys()].sort(); return {x:ks,y:ks.map(k=>m.get(k))};
+}
 function ma(arr,w){ return arr.map((_,i)=>{const lo=Math.max(0,i-w+1),s=arr.slice(lo,i+1);return s.length>=3?Math.round(s.reduce((a,b)=>a+b,0)/s.length):null;}); }
 
 async function fetchText(url){ const r=await fetch(url+(url.indexOf('?')<0?'?t=':'&t=')+Date.now(),{cache:'no-store'}); if(!r.ok) throw new Error(r.status+' '+url); return r.text(); }
@@ -461,7 +474,7 @@ function renderGmv(){
   let x,clean,raw,outPts;
   if(state.gmv==='day'){ x=o.prod_dates; clean=o.gmv; raw=o.gmv_raw;
     outPts=o.outlier_idx.map(i=>[o.prod_dates[i],o.gmv_raw[i]]); }
-  else{ const a=weeklyAgg(o.prod_dates,o.gmv),b=weeklyAgg(o.prod_dates,o.gmv_raw); x=a.x; clean=a.y; raw=b.y; outPts=[]; }
+  else{ const a=periodAgg(o.prod_dates,o.gmv,state.gmv),b=periodAgg(o.prod_dates,o.gmv_raw,state.gmv); x=a.x; clean=a.y; raw=b.y; outPts=[]; }
   c.setOption({
     tooltip:{trigger:'axis',valueFormatter:v=>'¥'+(+v).toLocaleString()},
     legend:{data:['清洗后GMV','原始GMV','异常日'],top:0},
@@ -477,30 +490,33 @@ function renderGmv(){
   }); c.resize();
 }
 function renderRecv(){
-  const o=D.overview; const c=gc('cRecv'); let x,y;
-  if(state.recv==='day'){ x=o.recept_dates; y=o.recv; } else { const a=weeklyAgg(o.recept_dates,o.recv); x=a.x; y=a.y; }
-  const m=ma(y,7);
+  const o=D.overview; const c=gc('cRecv'); const a=periodAgg(o.recept_dates,o.recv,state.recv); const x=a.x,y=a.y;
+  const showMA=state.recv==='day'; const m=showMA?ma(y,7):[];
+  const lab=state.recv==='week'?'每周接诊':state.recv==='month'?'每月接诊':'当日接诊';
   c.setOption({
-    tooltip:{trigger:'axis'},legend:{data:['当日接诊','7日均线'],top:0},
+    tooltip:{trigger:'axis'},legend:{data:showMA?[lab,'7日均线']:[lab],top:0},
     grid:{left:56,right:18,top:30,bottom:58},
     xAxis:{type:'category',data:x,axisLabel:{rotate:45}},
     yAxis:{type:'value',axisLabel:{formatter:yi}},
     dataZoom:[{type:'inside'},{type:'slider',height:14,bottom:16}],
     series:[
-      {name:'当日接诊',type:'bar',data:y,itemStyle:{color:'rgba(232,116,59,.55)'}},
+      {name:lab,type:'bar',data:y,itemStyle:{color:'rgba(232,116,59,.55)'}},
       {name:'7日均线',type:'line',data:m,smooth:true,symbol:'none',lineStyle:{color:PAL[1],width:2.2}}
     ]
   }); c.resize();
 }
 function renderAsp(){
   const o=D.overview; const c=gc('cAsp');
+  let x=o.prod_dates, y=o.asp;
+  if(state.asp!=='day'){ const g=periodAgg(o.prod_dates,o.gmv,state.asp), v=periodAgg(o.prod_dates,o.vol,state.asp);
+    x=g.x; y=g.y.map((gv,i)=> v.y[i]?Math.round(gv/v.y[i]):null); } // 周/月ASP=区间GMV/区间销量
   c.setOption({
     tooltip:{trigger:'axis',valueFormatter:v=>v==null?'-':'¥'+(+v).toLocaleString()},
     grid:{left:60,right:18,top:20,bottom:58},
-    xAxis:{type:'category',data:o.prod_dates,axisLabel:{rotate:45}},
+    xAxis:{type:'category',data:x,axisLabel:{rotate:45}},
     yAxis:{type:'value',axisLabel:{formatter:v=>'¥'+v}},
     dataZoom:[{type:'inside'},{type:'slider',height:14,bottom:16}],
-    series:[{type:'line',data:o.asp,smooth:true,symbol:'none',lineStyle:{color:PAL[2],width:2.2},areaStyle:{color:'rgba(0,168,132,.10)'}}]
+    series:[{type:'line',data:y,smooth:true,symbol:'none',lineStyle:{color:PAL[2],width:2.2},areaStyle:{color:'rgba(0,168,132,.10)'}}]
   }); c.resize();
 }
 
@@ -531,16 +547,18 @@ function renderPrTree(){
 function renderPrTrend(){
   const c=gc('cPrTrend'); const id=state.prSel; const pd=D.prod_daily[id]; const o=D.overview;
   const nm=(D.products.find(p=>p.id===id)||{}).name||id;
+  let x=o.prod_dates, v=pd?pd.v:[], r=pd?pd.r:[];
+  if(state.prTrend!=='day'){ const av=periodAgg(o.prod_dates,v,state.prTrend), ar=periodAgg(o.prod_dates,r,state.prTrend); x=av.x; v=av.y; r=ar.y; }
   c.setOption({
     title:{text:nm,left:'center',textStyle:{fontSize:13,color:'#56627a'}},
-    tooltip:{trigger:'axis'},legend:{data:['日销量','日GMV'],top:0},
+    tooltip:{trigger:'axis'},legend:{data:['销量','GMV'],top:0},
     grid:{left:60,right:64,top:30,bottom:58},
-    xAxis:{type:'category',data:o.prod_dates,axisLabel:{rotate:45}},
+    xAxis:{type:'category',data:x,axisLabel:{rotate:45}},
     yAxis:[{type:'value',name:'销量',axisLabel:{formatter:yi}},{type:'value',name:'GMV',axisLabel:{formatter:yi}}],
     dataZoom:[{type:'inside'},{type:'slider',height:14,bottom:16}],
     series:[
-      {name:'日销量',type:'bar',yAxisIndex:0,data:pd?pd.v:[],itemStyle:{color:'rgba(108,92,231,.45)'}},
-      {name:'日GMV',type:'line',yAxisIndex:1,data:pd?pd.r:[],smooth:true,symbol:'none',lineStyle:{color:PAL[0],width:2.2}}
+      {name:'销量',type:'bar',yAxisIndex:0,data:v,itemStyle:{color:'rgba(108,92,231,.45)'}},
+      {name:'GMV',type:'line',yAxisIndex:1,data:r,smooth:true,symbol:'none',lineStyle:{color:PAL[0],width:2.2}}
     ]
   }); c.resize();
 }
@@ -566,24 +584,23 @@ function renderCiBar(){
     ]
   }); c.resize();
 }
-function renderCiStack(){
-  const c=gc('cCiStack'); const o=D.overview; const top=D.cities.slice(0,8).map(c=>c.city);
+function renderCiStackG(cid,field,mode,isMoney){
+  const c=gc(cid); const o=D.overview; const top=D.cities.slice(0,8).map(c=>c.city);
   let x=o.recept_dates;
-  const series=top.map((city,i)=>{ let y=D.city_daily[city].rev;
-    if(state.ci==='week'){ const a=weeklyAgg(o.recept_dates,y); if(i===0)x=a.x; y=a.y; }
-    return {name:city,type:'line',stack:'t',areaStyle:{},symbol:'none',lineStyle:{width:1},data:y,itemStyle:{color:PAL[i%PAL.length]}}; });
-  // 其他城市合计
+  const series=top.map((city,i)=>{ const a=periodAgg(o.recept_dates,D.city_daily[city][field],mode); if(i===0)x=a.x;
+    return {name:city,type:'line',stack:'t',areaStyle:{},symbol:'none',lineStyle:{width:1},data:a.y,itemStyle:{color:PAL[i%PAL.length]}}; });
   const others=D.cities.slice(8).map(c=>c.city);
-  if(others.length){ let agg=o.recept_dates.map((_,k)=>others.reduce((s,ct)=>s+(D.city_daily[ct].rev[k]||0),0));
-    if(state.ci==='week'){ agg=weeklyAgg(o.recept_dates,agg).y; }
-    series.push({name:'其他',type:'line',stack:'t',areaStyle:{},symbol:'none',lineStyle:{width:1},data:agg,itemStyle:{color:'#aeb6c4'}}); }
+  if(others.length){ const aggD=o.recept_dates.map((_,k)=>others.reduce((s,ct)=>s+(D.city_daily[ct][field][k]||0),0));
+    series.push({name:'其他',type:'line',stack:'t',areaStyle:{},symbol:'none',lineStyle:{width:1},data:periodAgg(o.recept_dates,aggD,mode).y,itemStyle:{color:'#aeb6c4'}}); }
   c.setOption({
-    tooltip:{trigger:'axis',valueFormatter:v=>'¥'+(+v).toLocaleString()},legend:{top:0,type:'scroll'},
+    tooltip:{trigger:'axis',valueFormatter:v=>isMoney?'¥'+(+v).toLocaleString():(+v).toLocaleString()},legend:{top:0,type:'scroll'},
     grid:{left:60,right:18,top:30,bottom:56},
     xAxis:{type:'category',data:x,axisLabel:{rotate:45}},yAxis:{type:'value',axisLabel:{formatter:yi}},
     dataZoom:[{type:'inside'},{type:'slider',height:14,bottom:16}],series
   }); c.resize();
 }
+function renderCiStack(){ renderCiStackG('cCiStack','rev',state.ciGmv,true); }
+function renderCiRecvStack(){ renderCiStackG('cCiRecvStack','recv',state.ciRecv,false); }
 function renderCiTable(){
   const ndays=D.overview.recept_dates.length;
   const rows=D.cities;
@@ -605,16 +622,18 @@ function renderShBar(){
 }
 function renderShTrend(){
   const c=gc('cShTrend'); const s=state.shSel; const sd=D.shop_daily[s]; const o=D.overview;
+  let x=o.recept_dates, rv=sd?sd.recv:[], re=sd?sd.rev:[];
+  if(state.shTrend!=='day'){ const a1=periodAgg(o.recept_dates,rv,state.shTrend), a2=periodAgg(o.recept_dates,re,state.shTrend); x=a1.x; rv=a1.y; re=a2.y; }
   c.setOption({
     title:{text:s,left:'center',textStyle:{fontSize:13,color:'#56627a'}},
-    tooltip:{trigger:'axis'},legend:{data:['日接诊','日GMV估算'],top:0},
+    tooltip:{trigger:'axis'},legend:{data:['接诊','GMV估算'],top:0},
     grid:{left:56,right:64,top:30,bottom:58},
-    xAxis:{type:'category',data:o.recept_dates,axisLabel:{rotate:45}},
+    xAxis:{type:'category',data:x,axisLabel:{rotate:45}},
     yAxis:[{type:'value',name:'接诊',axisLabel:{formatter:yi}},{type:'value',name:'GMV',axisLabel:{formatter:yi}}],
     dataZoom:[{type:'inside'},{type:'slider',height:14,bottom:16}],
     series:[
-      {name:'日接诊',type:'bar',data:sd?sd.recv:[],itemStyle:{color:'rgba(232,116,59,.5)'}},
-      {name:'日GMV估算',type:'line',yAxisIndex:1,data:sd?sd.rev:[],smooth:true,symbol:'none',lineStyle:{color:PAL[0],width:2.2}}
+      {name:'接诊',type:'bar',data:rv,itemStyle:{color:'rgba(232,116,59,.5)'}},
+      {name:'GMV估算',type:'line',yAxisIndex:1,data:re,smooth:true,symbol:'none',lineStyle:{color:PAL[0],width:2.2}}
     ]
   }); c.resize();
 }
@@ -649,7 +668,7 @@ function showTab(t){ curTab=t;
   if(!D) return;
   if(t==='ov'){ renderGmv(); renderRecv(); renderAsp(); }
   if(t==='pr'){ renderPrBar(); renderPrTree(); renderPrTrend(); renderPrTable($('prTblSearch').value); }
-  if(t==='ci'){ renderCiBar(); renderCiStack(); renderCiTable(); }
+  if(t==='ci'){ renderCiBar(); renderCiRecvStack(); renderCiStack(); renderCiTable(); }
   if(t==='sh'){ renderShBar(); renderShTrend(); renderShTable($('shTblSearch').value); }
 }
 function renderFoot(src){
@@ -664,7 +683,11 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>showTab(t.dataset.t))
 function segBind(id,key,attr,cb){ $(id).querySelectorAll('span').forEach(s=>s.onclick=()=>{ $(id).querySelectorAll('span').forEach(z=>z.classList.remove('on')); s.classList.add('on'); state[key]=attr==='n'?+s.dataset.n:s.dataset.m; cb(); }); }
 segBind('gmvSeg','gmv','m',renderGmv);
 segBind('recvSeg','recv','m',renderRecv);
-segBind('ciSeg','ci','m',renderCiStack);
+segBind('aspSeg','asp','m',renderAsp);
+segBind('prTrendSeg','prTrend','m',renderPrTrend);
+segBind('ciRecvSeg','ciRecv','m',renderCiRecvStack);
+segBind('ciGmvSeg','ciGmv','m',renderCiStack);
+segBind('shTrendSeg','shTrend','m',renderShTrend);
 segBind('prTopSeg','prN','n',renderPrBar);
 segBind('shTopSeg','shN','n',renderShBar);
 $('prSearch').oninput=e=>{ fillSel('prSel',D.products.map(p=>[p.id,p.name]),e.target.value); if($('prSel').options.length){state.prSel=+$('prSel').value;renderPrTrend();} };
