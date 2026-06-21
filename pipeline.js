@@ -55,10 +55,14 @@
     const recvRec = []; // {id, name, city, day, recv}
     for (const [id, arr] of byShop) {
       arr.sort((a, b) => a.d < b.d ? -1 : 1);
-      for (let j = 0; j < arr.length - 1; j++) {
-        const delta = arr[j + 1].cum - arr[j].cum;
+      // 剔除老店中途的脏0：接诊累计单调不减，已出现正值后再出现0=详情接口抖动返回脏值
+      // (如 2026-06-19 广州ICC),会造成 delta=次日-0 的巨型假尖峰。保留新店开业前的合法0。
+      let seenPos = false; const clean = [];
+      for (const x of arr) { if (x.cum === 0 && seenPos) continue; if (x.cum > 0) seenPos = true; clean.push(x); }
+      for (let j = 0; j < clean.length - 1; j++) {
+        const delta = clean[j + 1].cum - clean[j].cum;
         if (delta < 0) continue;
-        recvRec.push({ id, name: latestName.get(id), city: latestCity.get(id), day: arr[j].d, recv: delta });
+        recvRec.push({ id, name: latestName.get(id), city: latestCity.get(id), day: clean[j].d, recv: delta });
       }
     }
     // 全国按业务日加总, 去开头退化0日
