@@ -86,14 +86,35 @@
     const bySpu = new Map();
     for (const v of pEarliest.values()) { if (!bySpu.has(v.id)) bySpu.set(v.id, []); bySpu.get(v.id).push(v); }
     const valRec = []; // {spu, day, vol, price, rev}
+    const DAY_MS = 86400000, addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * DAY_MS).toISOString().slice(0, 10);
     for (const [id, arr] of bySpu) {
       arr.sort((a, b) => a.d < b.d ? -1 : 1);
-      for (let j = 0; j < arr.length - 1; j++) {
-        let vol = arr[j + 1].cum - arr[j].cum;
+      // 剔除中途脏0（同接诊侧 seenPos 逻辑）：销量累计单调不减，已出现正值后再=0
+      // 必是爬虫解析失败(如 2026-07-20~08-28 新氧改销量文案致77个SPU连续39天写0)。保留上架前合法0。
+      let seenPos = false; const clean = [];
+      for (const x of arr) { if (x.cum === 0 && seenPos) continue; if (x.cum > 0) seenPos = true; clean.push(x); }
+      for (let j = 0; j < clean.length - 1; j++) {
+        // 0基线不出delta：0恰是爬虫解析失败的回退值，故障期内新进SPU全程记0、
+        // 恢复日0→真实累计(如6万)会整段砸在一天。真实新品损失仅上架首日销量，可忽略。
+        if (clean[j].cum === 0) continue;
+        let vol = clean[j + 1].cum - clean[j].cum;
         if (vol < 0) continue;
-        const price = arr[j].price;
+        const price = clean[j].price;
         if (!(price > 0)) continue;
-        valRec.push({ spu: id, day: arr[j].d, vol, price, rev: vol * price });
+        // 相邻有效快照跨多天(中间日缺数据/被剔脏0)时把增量按天均摊，价格优先取各天自己记录的价格
+        // (脏0期间价格字段仍正常更新)。避免39天的累计增量砸在缺口首日形成假尖峰。
+        const gap = Math.round((Date.parse(clean[j + 1].d) - Date.parse(clean[j].d)) / DAY_MS);
+        if (gap <= 1) {
+          valRec.push({ spu: id, day: clean[j].d, vol, price, rev: vol * price });
+        } else {
+          const perDay = vol / gap;
+          for (let g = 0; g < gap; g++) {
+            const dd = g === 0 ? clean[j].d : addDays(clean[j].d, g);
+            const rowP = pEarliest.get(id + '|' + dd);
+            const p = rowP && rowP.price > 0 ? rowP.price : price;
+            valRec.push({ spu: id, day: dd, vol: perDay, price: p, rev: perDay * p });
+          }
+        }
       }
     }
     // 每日全国GMV/销量 (含开头, 供MA), 排序
