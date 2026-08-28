@@ -106,18 +106,23 @@
         if (vol < 0) continue;
         const price = clean[j].price;
         if (!(price > 0)) continue;
-        // 相邻有效快照跨多天(中间日缺数据/被剔脏0)时把增量按天均摊，价格优先取各天自己记录的价格
+        // 相邻有效快照跨多天(中间日缺数据/被剔脏0)时把增量摊回各天，价格优先取各天自己记录的价格
         // (脏0期间价格字段仍正常更新)。避免39天的累计增量砸在缺口首日形成假尖峰。
+        // 摊销权重用同期全国日接诊量(故障期接诊数据完好, 与GMV周内节律一致:周五六峰/周二四谷,
+        // 断点前两者指数形状吻合)——还原真实周末波动而非抹成均匀平线; 接诊缺失的天退回均摊。
         const gap = Math.round((Date.parse(clean[j + 1].d) - Date.parse(clean[j].d)) / DAY_MS);
         if (gap <= 1) {
           valRec.push({ spu: id, day: clean[j].d, vol, price, rev: vol * price });
         } else {
-          const perDay = vol / gap;
+          const gapDays = []; for (let g = 0; g < gap; g++) gapDays.push(g === 0 ? clean[j].d : addDays(clean[j].d, g));
+          const wts = gapDays.map(dd => natRecvMap.get(dd) || 0);
+          const wsum = wts.reduce((a, b) => a + b, 0);
           for (let g = 0; g < gap; g++) {
-            const dd = g === 0 ? clean[j].d : addDays(clean[j].d, g);
-            const rowP = pEarliest.get(id + '|' + dd);
+            const share = wsum > 0 ? vol * wts[g] / wsum : vol / gap;
+            if (!(share > 0)) continue;
+            const rowP = pEarliest.get(id + '|' + gapDays[g]);
             const p = rowP && rowP.price > 0 ? rowP.price : price;
-            valRec.push({ spu: id, day: dd, vol: perDay, price: p, rev: perDay * p });
+            valRec.push({ spu: id, day: gapDays[g], vol: share, price: p, rev: share * p });
           }
         }
       }
