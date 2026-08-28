@@ -81,7 +81,12 @@
       const d = day(r.date), k = r.spu_id + '|' + d, cum = +r.total_sold, price = +r.price;
       if (!Number.isFinite(cum)) continue;
       const cur = pEarliest.get(k);
-      if (!cur || r.date < cur.ts) pEarliest.set(k, { id: r.spu_id, d, ts: r.date, cum, price });
+      // 当日最早"有效"快照优先: 正值 > 零值(0是解析失败的回退值, 非有效观测),
+      // 同类中取最早。全天无正值才落零值行, 保留新品上架前的合法0。
+      if (!cur) { pEarliest.set(k, { id: r.spu_id, d, ts: r.date, cum, price }); continue; }
+      const curPos = cur.cum > 0, newPos = cum > 0;
+      if ((newPos && !curPos) || (newPos === curPos && r.date < cur.ts))
+        pEarliest.set(k, { id: r.spu_id, d, ts: r.date, cum, price });
     }
     const bySpu = new Map();
     for (const v of pEarliest.values()) { if (!bySpu.has(v.id)) bySpu.set(v.id, []); bySpu.get(v.id).push(v); }
