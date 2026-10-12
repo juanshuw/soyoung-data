@@ -53,16 +53,43 @@
     const byShop = new Map();
     for (const v of earliest.values()) { if (!byShop.has(v.id)) byShop.set(v.id, []); byShop.get(v.id).push(v); }
     const recvRec = []; // {id, name, city, day, recv}
+    const RDAY_MS = 86400000, rAddDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * RDAY_MS).toISOString().slice(0, 10);
+    // 两遍法: 第一遍只用相邻自然日(gap=1)的delta求全国日形状, 第二遍把跨多天缺口
+    // (如2026-10-09起Actions IP被风控、61店连续数日无快照)的增量按日形状加权摊回各天,
+    // 避免恢复后整段增量砸在缺口首日形成假尖峰/假断崖。形状缺失的天退回均匀摊。
+    const cleanByShop = new Map();
+    const natShape = new Map();
     for (const [id, arr] of byShop) {
       arr.sort((a, b) => a.d < b.d ? -1 : 1);
       // 剔除老店中途的脏0：接诊累计单调不减，已出现正值后再出现0=详情接口抖动返回脏值
       // (如 2026-06-19 广州ICC),会造成 delta=次日-0 的巨型假尖峰。保留新店开业前的合法0。
       let seenPos = false; const clean = [];
       for (const x of arr) { if (x.cum === 0 && seenPos) continue; if (x.cum > 0) seenPos = true; clean.push(x); }
+      cleanByShop.set(id, clean);
       for (let j = 0; j < clean.length - 1; j++) {
         const delta = clean[j + 1].cum - clean[j].cum;
         if (delta < 0) continue;
-        recvRec.push({ id, name: latestName.get(id), city: latestCity.get(id), day: clean[j].d, recv: delta });
+        if (Math.round((Date.parse(clean[j + 1].d) - Date.parse(clean[j].d)) / RDAY_MS) === 1)
+          natShape.set(clean[j].d, (natShape.get(clean[j].d) || 0) + delta);
+      }
+    }
+    for (const [id, clean] of cleanByShop) {
+      for (let j = 0; j < clean.length - 1; j++) {
+        const delta = clean[j + 1].cum - clean[j].cum;
+        if (delta < 0) continue;
+        const gap = Math.round((Date.parse(clean[j + 1].d) - Date.parse(clean[j].d)) / RDAY_MS);
+        if (gap <= 1) {
+          recvRec.push({ id, name: latestName.get(id), city: latestCity.get(id), day: clean[j].d, recv: delta });
+        } else {
+          const gapDays = []; for (let g = 0; g < gap; g++) gapDays.push(g === 0 ? clean[j].d : rAddDays(clean[j].d, g));
+          const wts = gapDays.map(dd => natShape.get(dd) || 0);
+          const wsum = wts.reduce((a, b) => a + b, 0);
+          for (let g = 0; g < gap; g++) {
+            const share = wsum > 0 ? delta * wts[g] / wsum : delta / gap;
+            if (!(share > 0)) continue;
+            recvRec.push({ id, name: latestName.get(id), city: latestCity.get(id), day: gapDays[g], recv: share });
+          }
+        }
       }
     }
     // 全国按业务日加总, 去开头退化0日
@@ -92,7 +119,42 @@
     for (const v of pEarliest.values()) { if (!bySpu.has(v.id)) bySpu.set(v.id, []); bySpu.get(v.id).push(v); }
     const valRec = []; // {spu, day, vol, price, rev}
     const DAY_MS = 86400000, addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * DAY_MS).toISOString().slice(0, 10);
+    // 共享计数器去重(2026-10发现): 新氧会把同一商品挂多个SPU链接(促销变体), 共用一个销量
+    // 计数器(如"新一代热玛吉"¥8999/¥6800两链接轨迹逐日全同, 9/2起双计GMV约2110万)。
+    // 判定: 两SPU在≥5个共同观测日上cum完全一致且有正值 → 同计数器, 仅保留挂牌价最低者(保守口径)。
+    const spuDays = new Map(); // spu -> Map(day->cum), 及最新price
+    for (const v of pEarliest.values()) {
+      if (!spuDays.has(v.id)) spuDays.set(v.id, { days: new Map(), price: 0, ts: '' });
+      const o = spuDays.get(v.id); o.days.set(v.d, v.cum);
+      if (v.ts > o.ts) { o.ts = v.ts; o.price = v.price; }
+    }
+    const dupDrop = new Set();
+    {
+      const ids = [...spuDays.keys()];
+      for (let a = 0; a < ids.length; a++) {
+        if (dupDrop.has(ids[a])) continue;
+        const A = spuDays.get(ids[a]);
+        for (let b = a + 1; b < ids.length; b++) {
+          if (dupDrop.has(ids[b])) continue;
+          const B = spuDays.get(ids[b]);
+          let common = 0, equal = true, hasPos = false;
+          for (const [d, cum] of A.days) {
+            const cb = B.days.get(d);
+            if (cb === undefined) continue;
+            common++;
+            if (cb !== cum) { equal = false; break; }
+            if (cum > 0) hasPos = true;
+          }
+          if (equal && common >= 5 && hasPos) {
+            // 代表SPU取观测天数更多者(保历史完整), 同天数取挂牌价低者(保守)
+            const keepA = A.days.size > B.days.size || (A.days.size === B.days.size && A.price <= B.price);
+            dupDrop.add(keepA ? ids[b] : ids[a]);
+          }
+        }
+      }
+    }
     for (const [id, arr] of bySpu) {
+      if (dupDrop.has(id)) continue; // 共享计数器重复链接, 已由代表SPU计量
       arr.sort((a, b) => a.d < b.d ? -1 : 1);
       // 剔除中途脏0（同接诊侧 seenPos 逻辑）：销量累计单调不减，已出现正值后再=0
       // 必是爬虫解析失败(如 2026-07-20~08-28 新氧改销量文案致77个SPU连续39天写0)。保留上架前合法0。
